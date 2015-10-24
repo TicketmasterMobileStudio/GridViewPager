@@ -137,7 +137,7 @@ public class GridViewPager extends ViewGroup {
         this.mSlideAnimationDurationMs = 300;
         this.mEndScrollRunnable = new Runnable() {
             public void run() {
-                GridViewPager.this.setScrollState(0);
+                GridViewPager.this.setScrollState(SCROLL_STATE_IDLE);
                 GridViewPager.this.populate();
             }
         };
@@ -742,7 +742,7 @@ public class GridViewPager extends ViewGroup {
                         for(this.mTempPoint1.y = startPosY; this.mTempPoint1.y <= endPosY; ++this.mTempPoint1.y) {
                             this.mTempPoint1.x = this.mAdapter.getCurrentColumnForRow(this.mTempPoint1.y, newX);
                             if(!this.mItems.containsKey(this.mTempPoint1)) {
-                                this.addNewItem(this.mTempPoint1.x, this.mTempPoint1.y);
+                                this.addNewItem(this.mTempPoint1.x, this.mTempPoint1.y); // TODO
                             }
 
                             if(this.mTempPoint1.y != this.mCurItem.y) {
@@ -757,7 +757,7 @@ public class GridViewPager extends ViewGroup {
 
                         this.mRecycledItems.clear();
                         this.mAdapter.finishUpdate(this);
-                        this.mPopulatedPages.set(startPosX, startPosY, endPosX, endPosY);
+                        this.mPopulatedPages.set(startPosX, startPosY, endPosX, endPosY); // TODO
                         this.mPopulatedPageBounds.set(this.computePageLeft(startPosX) - this.getPaddingLeft(), this.computePageTop(startPosY) - this.getPaddingTop(), this.computePageLeft(endPosX + 1) - this.getPaddingRight(), this.computePageTop(endPosY + 1) + this.getPaddingBottom());
                         if(this.mAdapterChangeNotificationPending) {
                             this.mAdapterChangeNotificationPending = false;
@@ -1082,13 +1082,14 @@ public class GridViewPager extends ViewGroup {
                 final float transformX = (float) (child.getLeft() - scrollX) / getClientWidth();
                 final float transformY = (float) (child.getTop() - scrollY) / getClientWidth();
                 ItemInfo info = infoForChild(child);
+                if (info == null) continue;
                 mPageTransformer.transformPage(child, info.positionX, info.positionY, transformX, transformY);
             }
         }
     }
 
     private void completeScroll(boolean postEvents) {
-        boolean needPopulate = this.mScrollState == 2;
+        boolean needPopulate = this.mScrollState == SCROLL_STATE_SETTLING;
         if(needPopulate) {
             this.mScroller.abortAnimation();
             int oldX = this.getRowScrollX(this.mCurItem.y);
@@ -1197,7 +1198,7 @@ public class GridViewPager extends ViewGroup {
     }
 
     private static float limit(float input, int limit) {
-        return limit > 0?Math.max(0.0F, Math.min(input, (float)limit)):Math.min(0.0F, Math.max(input, (float)limit));
+        return limit > 0 ? Math.max(0.0F, Math.min(input, (float)limit)) : Math.min(0.0F, Math.max(input, (float)limit));
     }
 
     private boolean performDrag(float x, float y) {
@@ -1213,9 +1214,9 @@ public class GridViewPager extends ViewGroup {
         float scrollX = (float)this.getRowScrollX(this.mCurItem.y);
         float scrollY = (float)this.getScrollY();
         int targetY;
-        boolean wouldOverscroll;
+        boolean wouldOverscroll = false;
         float overscrollY;
-        if(this.mScrollAxis == 1) {
+        if(this.mScrollAxis == SCROLL_AXIS_Y) {
             targetY = this.getContentHeight() + this.mRowMargin;
             float targetX;
             if(deltaY < 0.0F) {
@@ -1224,7 +1225,6 @@ public class GridViewPager extends ViewGroup {
                 targetX = ((float)targetY - scrollY % (float)targetY) % (float)targetY;
             }
 
-            wouldOverscroll = false;
             if(Math.abs(targetX) <= Math.abs(deltaY)) {
                 deltaY -= targetX;
                 scrollY += targetX;
@@ -1246,11 +1246,11 @@ public class GridViewPager extends ViewGroup {
 
         int targetX1 = (int)(scrollX + (float)((int)deltaX));
         targetY = (int)(scrollY + (float)((int)deltaY));
-        wouldOverscroll = targetX1 < leftBound || targetX1 > rightBound || targetY < topBound || targetY > bottomBound;
+        wouldOverscroll = wouldOverscroll || targetX1 < leftBound || targetX1 > rightBound || targetY < topBound || targetY > bottomBound;
         if(wouldOverscroll) {
             int mode1 = this.getOverScrollMode();
             boolean couldScroll1 = this.mScrollAxis == 0 && leftBound < rightBound || this.mScrollAxis == 1 && topBound < bottomBound;
-            if(mode1 != 0 && (!couldScroll1 || mode1 != 1)) {
+            if(mode1 != OVER_SCROLL_ALWAYS && (!couldScroll1 || mode1 != OVER_SCROLL_IF_CONTENT_SCROLLS)) {
                 deltaX = limit(deltaX, (float)leftBound - scrollX, (float)rightBound - scrollX);
                 deltaY = limit(deltaY, (float)topBound - scrollY, (float)bottomBound - scrollY);
             } else {
@@ -1267,6 +1267,14 @@ public class GridViewPager extends ViewGroup {
                     deltaY = limit(deltaY, (float) topBound - scrollY, (float) bottomBound - scrollY);
                 }
             }
+        }
+
+        if ((!mAdapter.isLeftSwipingAllowed(mCurItem.y, mCurItem.x) && deltaX > 0) || (!mAdapter.isRightSwipingAllowed(mCurItem.y, mCurItem.x) && deltaX < 0)) {
+            deltaX = 0;
+        }
+
+        if ((!mAdapter.isUpSwipingAllowed(mCurItem.y, mCurItem.x) && deltaY > 0) || (!mAdapter.isDownSwipingAllowed(mCurItem.y, mCurItem.x) && deltaY < 0)) {
+            deltaY = 0;
         }
 
         scrollX += deltaX;
@@ -1416,7 +1424,7 @@ public class GridViewPager extends ViewGroup {
     }
 
     private boolean pageLeft() {
-        if(this.mCurItem.x > 0) {
+        if(this.mAdapter != null && this.mAdapter.isLeftSwipingAllowed(this.mCurItem.y, this.mCurItem.x) && this.mCurItem.x > 0) {
             this.setCurrentItem(this.mCurItem.x - 1, this.mCurItem.y, true);
             return true;
         } else {
@@ -1425,7 +1433,7 @@ public class GridViewPager extends ViewGroup {
     }
 
     private boolean pageRight() {
-        if(this.mAdapter != null && this.mCurItem.x < this.mAdapter.getColumnCount(this.mCurItem.y) - 1) {
+        if(this.mAdapter != null && this.mAdapter.isRightSwipingAllowed(this.mCurItem.y, this.mCurItem.x) && this.mCurItem.x < this.mAdapter.getColumnCount(this.mCurItem.y) - 1) {
             this.setCurrentItem(this.mCurItem.x + 1, this.mCurItem.y, true);
             return true;
         } else {
@@ -1434,7 +1442,7 @@ public class GridViewPager extends ViewGroup {
     }
 
     private boolean pageUp() {
-        if(this.mCurItem.y > 0) {
+        if(this.mAdapter != null && this.mAdapter.isUpSwipingAllowed(this.mCurItem.y, this.mCurItem.x) && this.mCurItem.y > 0) {
             this.setCurrentItem(this.mCurItem.x, this.mCurItem.y - 1, true);
             return true;
         } else {
@@ -1443,7 +1451,7 @@ public class GridViewPager extends ViewGroup {
     }
 
     private boolean pageDown() {
-        if(this.mAdapter != null && this.mCurItem.y < this.mAdapter.getRowCount() - 1) {
+        if(this.mAdapter != null && this.mAdapter.isDownSwipingAllowed(this.mCurItem.y, this.mCurItem.x) && this.mCurItem.y < this.mAdapter.getRowCount() - 1) {
             this.setCurrentItem(this.mCurItem.x, this.mCurItem.y + 1, true);
             return true;
         } else {
@@ -1483,11 +1491,11 @@ public class GridViewPager extends ViewGroup {
 
     private boolean handlePointerMove(MotionEvent ev) {
         int activePointerId = this.mActivePointerId;
-        if(activePointerId == -1) {
+        if(activePointerId == NO_POINTER) {
             return false;
         } else {
             int pointerIndex = ev.findPointerIndex(activePointerId);
-            if(pointerIndex == -1) {
+            if(pointerIndex == NO_POINTER) {
                 return this.mIsBeingDragged;
             } else {
                 float x = MotionEventCompat.getX(ev, pointerIndex);
@@ -1505,11 +1513,11 @@ public class GridViewPager extends ViewGroup {
                 if(!this.mIsBeingDragged && xDiff * xDiff + yDiff * yDiff > (float)this.mTouchSlopSquared) {
                     this.mIsBeingDragged = true;
                     this.requestParentDisallowInterceptTouchEvent(true);
-                    this.setScrollState(1);
+                    this.setScrollState(SCROLL_STATE_DRAGGING);
                     if(yDiff >= xDiff) {
-                        this.mScrollAxis = 1;
+                        this.mScrollAxis = SCROLL_AXIS_Y;
                     } else {
-                        this.mScrollAxis = 0;
+                        this.mScrollAxis = SCROLL_AXIS_X;
                     }
 
                     if(yDiff > 0.0F && xDiff > 0.0F) {
@@ -1525,8 +1533,8 @@ public class GridViewPager extends ViewGroup {
                         dragX = (float)this.mTouchSlop;
                     }
 
-                    this.mPointerLastX = dx > 0.0F?this.mPointerLastX + dragY:this.mPointerLastX - dragY;
-                    this.mPointerLastY = dy > 0.0F?this.mPointerLastY + dragX:this.mPointerLastY - dragX;
+                    this.mPointerLastX = dx > 0.0F ? this.mPointerLastX + dragY : this.mPointerLastX - dragY;
+                    this.mPointerLastY = dy > 0.0F ? this.mPointerLastY + dragX : this.mPointerLastY - dragX;
                 }
 
                 if(this.mIsBeingDragged) {
@@ -1554,7 +1562,7 @@ public class GridViewPager extends ViewGroup {
             int velocity = 0;
             ItemInfo ii = this.infoForCurrentScrollPosition();
             switch(this.mScrollAxis) {
-                case 0:
+                case SCROLL_AXIS_X:
                     float x = ev.getRawX();
                     int totalDeltaX = (int)(x - this.mGestureInitialX);
                     velocity = (int)velocityTracker.getXVelocity(this.mActivePointerId);
@@ -1563,7 +1571,7 @@ public class GridViewPager extends ViewGroup {
                     float pageOffsetX = this.getXIndex((float)distanceX);
                     targetPageX = this.determineTargetPage(this.mCurItem.x, currentPageX, pageOffsetX, this.mPopulatedPages.left, this.mPopulatedPages.right, velocity, totalDeltaX);
                     break;
-                case 1:
+                case SCROLL_AXIS_Y:
                     ev.getX(activePointerIndex);
                     int totalDeltaY = this.mGestureInitialScrollY - this.getScrollY();
                     velocity = (int)velocityTracker.getYVelocity(this.mActivePointerId);
@@ -1585,7 +1593,7 @@ public class GridViewPager extends ViewGroup {
                     }
             }
 
-            if(this.mScrollState != 3) {
+            if(this.mScrollState != SCROLL_STATE_CONTENT_SETTLING) {
                 this.mDelayPopulate = true;
                 if(targetPageY != this.mCurItem.y) {
                     targetPageX = this.mAdapter.getCurrentColumnForRow(targetPageY, this.mCurItem.x);
@@ -1594,11 +1602,11 @@ public class GridViewPager extends ViewGroup {
                 this.setCurrentItemInternal(targetPageY, targetPageX, true, true, velocity);
             }
 
-            this.mActivePointerId = -1;
+            this.mActivePointerId = NO_POINTER;
             this.endDrag();
             return false;
         } else {
-            this.mActivePointerId = -1;
+            this.mActivePointerId = NO_POINTER;
             this.endDrag();
             return false;
         }
@@ -1625,6 +1633,8 @@ public class GridViewPager extends ViewGroup {
     }
 
     private int determineTargetPage(int previousPage, int currentPage, float pageOffset, int firstPage, int lastPage, int velocity, int totalDragDistance) {
+        if (pageOffset == 0) return currentPage;
+
         if(Math.abs(velocity) < this.mMinUsableVelocity) {
             velocity = (int)Math.copySign((float)velocity, (float)totalDragDistance);
         }
@@ -1632,12 +1642,13 @@ public class GridViewPager extends ViewGroup {
         float flingBoost = 0.5F / Math.max(Math.abs(0.5F - pageOffset), 0.001F) * 100.0F;
         int targetPage;
         if(Math.abs(totalDragDistance) > this.mMinFlingDistance && (float)Math.abs(velocity) + flingBoost > (float)this.mMinFlingVelocity) {
-            targetPage = velocity > 0?currentPage:currentPage + 1;
+            targetPage = velocity > 0 ? currentPage : currentPage + 1;
         } else {
             targetPage = Math.round((float)currentPage + pageOffset);
         }
 
         targetPage = limit(targetPage, firstPage, lastPage);
+        Log.e("GridViewPager", "current:" + currentPage + " previous:" + previousPage + " target:" + targetPage + " velocity:" + velocity + " pageOffset:" + pageOffset);
         return targetPage;
     }
 

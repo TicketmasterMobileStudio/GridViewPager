@@ -13,20 +13,36 @@ import android.view.ViewGroup;
 
 @TargetApi(20)
 public abstract class GridPagerAdapter {
-    public static final Drawable BACKGROUND_NONE = new GridPagerAdapter.NoOpDrawable();
+    public static final Drawable BACKGROUND_NONE = new NoOpDrawable();
     public static final int OPTION_DISABLE_PARALLAX = 1;
     public static final int PAGE_DEFAULT_OPTIONS = 0;
     public static final Point POSITION_NONE = new Point(-1, -1);
     public static final Point POSITION_UNCHANGED = new Point(-2, -2);
     private DataSetObservable mObservable = new DataSetObservable();
-    private GridPagerAdapter.OnBackgroundChangeListener mOnBackgroundChangeListener;
+    private OnBackgroundChangeListener mOnBackgroundChangeListener;
 
     public GridPagerAdapter() {
     }
 
     public abstract int getRowCount();
 
-    public abstract int getColumnCount(int var1);
+    public abstract int getColumnCount(int row);
+
+    public boolean isLeftSwipingAllowed(int row, int column) {
+        return true;
+    }
+
+    public boolean isUpSwipingAllowed(int row, int column) {
+        return true;
+    }
+
+    public boolean isRightSwipingAllowed(int row, int column) {
+        return true;
+    }
+
+    public boolean isDownSwipingAllowed(int row, int column) {
+        return true;
+    }
 
     public int getCurrentColumnForRow(int row, int currentColumn) {
         return 0;
@@ -73,7 +89,7 @@ public abstract class GridPagerAdapter {
 
     }
 
-    void setOnBackgroundChangeListener(GridPagerAdapter.OnBackgroundChangeListener listener) {
+    void setOnBackgroundChangeListener(OnBackgroundChangeListener listener) {
         this.mOnBackgroundChangeListener = listener;
     }
 
