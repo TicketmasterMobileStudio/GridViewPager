@@ -1,6 +1,5 @@
 package com.ticketmaster.mobilestudio.gridviewpager;
 
-import android.annotation.TargetApi;
 import android.database.DataSetObservable;
 import android.database.DataSetObserver;
 import android.graphics.Canvas;
@@ -11,7 +10,6 @@ import android.os.Parcelable;
 import android.view.View;
 import android.view.ViewGroup;
 
-@TargetApi(20)
 public abstract class GridPagerAdapter {
     private static final int DEFAULT_OFFSET = 1;
 

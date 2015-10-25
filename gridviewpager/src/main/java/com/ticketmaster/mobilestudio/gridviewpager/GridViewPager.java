@@ -7,6 +7,8 @@ import android.database.DataSetObserver;
 import android.graphics.Point;
 import android.graphics.Rect;
 import android.os.Build;
+import android.os.Build.VERSION;
+import android.os.Build.VERSION_CODES;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.os.SystemClock;
@@ -33,13 +35,6 @@ import android.widget.Scroller;
 
 import com.ticketmaster.mobilestudio.gridviewpager.GridPagerAdapter.OnBackgroundChangeListener;
 
-@TargetApi(20)
-/**
- * Defaults have been sent to defaults that would be expected on a phone or tablet.
- *
- * Changes:
- * {@link setUseEdgeEffect}
- */
 public class GridViewPager extends ViewGroup {
     private static final String TAG = "GridViewPager";
     private static final boolean DEBUG_LIFECYCLE = false;
@@ -179,7 +174,9 @@ public class GridViewPager extends ViewGroup {
 
         for(int i = 0; i < childCount; ++i) {
             View child = this.getChildAt(i);
-            child.dispatchApplyWindowInsets(insets);
+            if (VERSION.SDK_INT >= VERSION_CODES.KITKAT_WATCH) {
+                child.dispatchApplyWindowInsets(insets);
+            }
         }
 
         this.mWindowInsets = insets;
@@ -210,6 +207,7 @@ public class GridViewPager extends ViewGroup {
         this.mOnApplyWindowInsetsListener = listener;
     }
 
+    @TargetApi(VERSION_CODES.KITKAT_WATCH)
     public WindowInsets dispatchApplyWindowInsets(WindowInsets insets) {
         insets = this.onApplyWindowInsets(insets);
         if(this.mOnApplyWindowInsetsListener != null) {
@@ -675,7 +673,9 @@ public class GridViewPager extends ViewGroup {
     }
 
     private void cancelDrag() {
-        this.cancelPendingInputEvents();
+        if (VERSION.SDK_INT >= VERSION_CODES.KITKAT) {
+            this.cancelPendingInputEvents();
+        }
         long now = SystemClock.uptimeMillis();
         MotionEvent event = MotionEvent.obtain(now, now, 3, 0.0F, 0.0F, 0);
         event.setSource(4098);
@@ -858,7 +858,7 @@ public class GridViewPager extends ViewGroup {
             super.addView(child, index, params);
         }
 
-        if(this.mWindowInsets != null) {
+        if(VERSION.SDK_INT >= VERSION_CODES.KITKAT_WATCH && this.mWindowInsets != null) {
             child.onApplyWindowInsets(this.mWindowInsets);
         }
 

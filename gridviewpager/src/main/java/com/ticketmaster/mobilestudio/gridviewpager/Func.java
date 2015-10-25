@@ -1,11 +1,9 @@
 package com.ticketmaster.mobilestudio.gridviewpager;
 
-import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Context;
 import android.view.View;
 
-@TargetApi(20)
 class Func {
     Func() {
     }

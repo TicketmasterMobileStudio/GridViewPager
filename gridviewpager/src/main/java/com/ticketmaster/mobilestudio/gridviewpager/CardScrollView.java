@@ -2,13 +2,14 @@ package com.ticketmaster.mobilestudio.gridviewpager;
 
 import android.annotation.TargetApi;
 import android.content.Context;
+import android.os.Build.VERSION;
+import android.os.Build.VERSION_CODES;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowInsets;
 import android.widget.FrameLayout;
 
-@TargetApi(20)
 public class CardScrollView extends FrameLayout {
     private static final String TAG = "CardScrollView";
     private static final boolean DEBUG = false;
@@ -28,9 +29,12 @@ public class CardScrollView extends FrameLayout {
 
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
-        this.requestApplyInsets();
+        if (VERSION.SDK_INT >= VERSION_CODES.KITKAT_WATCH) {
+            this.requestApplyInsets();
+        }
     }
 
+    @TargetApi(VERSION_CODES.KITKAT_WATCH)
     public WindowInsets onApplyWindowInsets(WindowInsets insets) {
         boolean round = insets.isRound();
         if(this.mRoundDisplay != round) {
@@ -222,8 +226,8 @@ public class CardScrollView extends FrameLayout {
             int availableWidth = MeasureSpec.getSize(widthMeasureSpec) - paddingWidth;
             availableWidth -= lp.leftMargin + lp.rightMargin;
             availableHeight -= lp.topMargin + lp.bottomMargin;
-            int widthSpec = MeasureSpec.makeMeasureSpec(availableWidth, 1073741824);
-            int heightSpec = MeasureSpec.makeMeasureSpec(availableHeight, -2147483648);
+            int widthSpec = MeasureSpec.makeMeasureSpec(availableWidth, MeasureSpec.EXACTLY);
+            int heightSpec = MeasureSpec.makeMeasureSpec(availableHeight, MeasureSpec.AT_MOST);
             this.mCardFrame.measure(widthSpec, heightSpec);
         }
 

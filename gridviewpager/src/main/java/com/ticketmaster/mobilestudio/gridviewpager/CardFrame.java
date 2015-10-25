@@ -43,7 +43,7 @@ public class CardFrame extends ViewGroup {
     private final Rect mInsetPadding;
     private final Rect mContentPadding;
     private boolean mHasBottomInset;
-    private final CardFrame.EdgeFade mEdgeFade;
+    private final EdgeFade mEdgeFade;
 
     public CardFrame(Context context) {
         this(context, (AttributeSet)null, 0);
@@ -61,7 +61,7 @@ public class CardFrame extends ViewGroup {
         this.mChildClipBounds = new Rect();
         this.mInsetPadding = new Rect();
         this.mContentPadding = new Rect();
-        this.mEdgeFade = new CardFrame.EdgeFade();
+        this.mEdgeFade = new EdgeFade();
         Resources res = context.getResources();
         float density = res.getDisplayMetrics().density;
         this.mEdgeFadeDistance = (int)(40.0F * density);
@@ -302,11 +302,11 @@ public class CardFrame extends ViewGroup {
         canvas.clipRect(this.mChildClipBounds);
         boolean flags = true;
         if(topFade) {
-            canvas.saveLayer((float)this.mChildClipBounds.left, (float)this.mChildClipBounds.top, (float)this.mChildClipBounds.right, (float)(this.mChildClipBounds.top + fadeDistance), (Paint)null, 4);
+            canvas.saveLayer((float)this.mChildClipBounds.left, (float)this.mChildClipBounds.top, (float)this.mChildClipBounds.right, (float)(this.mChildClipBounds.top + fadeDistance), (Paint)null, Canvas.HAS_ALPHA_LAYER_SAVE_FLAG);
         }
 
         if(bottomFade) {
-            canvas.saveLayer((float)this.mChildClipBounds.left, (float)(this.mChildClipBounds.bottom - fadeDistance), (float)this.mChildClipBounds.right, (float)this.mChildClipBounds.bottom, (Paint)null, 4);
+            canvas.saveLayer((float)this.mChildClipBounds.left, (float)(this.mChildClipBounds.bottom - fadeDistance), (float)this.mChildClipBounds.right, (float)this.mChildClipBounds.bottom, (Paint)null, Canvas.HAS_ALPHA_LAYER_SAVE_FLAG);
         }
 
         more = super.drawChild(canvas, child, drawingTime);

@@ -1,7 +1,6 @@
 package com.ticketmaster.mobilestudio.gridviewpager;
 
 
-import android.annotation.TargetApi;
 import android.graphics.Point;
 import android.graphics.drawable.Drawable;
 import android.support.v4.util.LruCache;
@@ -11,10 +10,9 @@ import com.ticketmaster.mobilestudio.gridviewpager.GridPagerAdapter.OnBackground
 import com.ticketmaster.mobilestudio.gridviewpager.GridViewPager.OnAdapterChangeListener;
 import com.ticketmaster.mobilestudio.gridviewpager.GridViewPager.OnPageChangeListener;
 
-@TargetApi(20)
 class BackgroundController implements OnPageChangeListener, OnAdapterChangeListener, OnBackgroundChangeListener {
     private GridPagerAdapter mAdapter;
-    private BackgroundController.Direction mDirection;
+    private Direction mDirection;
     private final Point mCurrentPage;
     private final Point mLastSelectedPage;
     private final LruCache<Integer, Drawable> mRowBackgrounds;
@@ -54,7 +52,7 @@ class BackgroundController implements OnPageChangeListener, OnAdapterChangeListe
     }
 
     public BackgroundController() {
-        this.mDirection = BackgroundController.Direction.NONE;
+        this.mDirection = Direction.NONE;
         this.mCurrentPage = new Point();
         this.mLastSelectedPage = new Point();
         this.mRowBackgrounds = new LruCache(3) {
@@ -89,8 +87,8 @@ class BackgroundController implements OnPageChangeListener, OnAdapterChangeListe
     }
 
     public void onPageScrollStateChanged(int state) {
-        if(state == 0) {
-            this.mDirection = BackgroundController.Direction.NONE;
+        if(state == GridViewPager.SCROLL_STATE_IDLE) {
+            this.mDirection = Direction.NONE;
         }
 
     }
@@ -98,7 +96,7 @@ class BackgroundController implements OnPageChangeListener, OnAdapterChangeListe
     public void onPageScrolled(int row, int column, float rowOffset, float colOffset, int rowOffsetPx, int colOffsetPx) {
         float relX;
         float relY;
-        if(this.mDirection != BackgroundController.Direction.NONE && this.mCurrentPage.equals(this.mLastSelectedPage) && this.mLastPageScrolled.equals(column, row)) {
+        if(this.mDirection != Direction.NONE && this.mCurrentPage.equals(this.mLastSelectedPage) && this.mLastPageScrolled.equals(column, row)) {
             if(this.mDirection.isVertical()) {
                 relX = 0.0F;
                 relY = (float)Func.clamp(row - this.mCurrentPage.y, -1, 0) + rowOffset;
@@ -115,7 +113,7 @@ class BackgroundController implements OnPageChangeListener, OnAdapterChangeListe
                 relX = (float)Func.clamp(column - this.mCurrentPage.x, -1, 0) + colOffset;
             }
 
-            this.mDirection = BackgroundController.Direction.fromOffset(relX, relY);
+            this.mDirection = Direction.fromOffset(relX, relY);
             this.updateBackgrounds(this.mCurrentPage, this.mLastPageScrolled, this.mDirection, relX, relY);
         }
 
@@ -130,11 +128,11 @@ class BackgroundController implements OnPageChangeListener, OnAdapterChangeListe
 
     }
 
-    private void updateBackgrounds(Point current, Point scrolling, BackgroundController.Direction dir, float relX, float relY) {
+    private void updateBackgrounds(Point current, Point scrolling, Direction dir, float relX, float relY) {
         if(this.mAdapter != null && this.mAdapter.getRowCount() > 0) {
             Drawable base = this.updateBaseLayer(current, relX, relY);
             boolean overScrolling = (float)current.x + relX < 0.0F || (float)current.y + relY < 0.0F || (float)scrolling.x + relX > (float)(this.mAdapter.getColumnCount(current.y) - 1) || (float)scrolling.y + relY > (float)(this.mAdapter.getRowCount() - 1);
-            if(this.mDirection != BackgroundController.Direction.NONE && !overScrolling) {
+            if(this.mDirection != Direction.NONE && !overScrolling) {
                 this.updateFadingLayer(current, scrolling, dir, relX, relY, base);
             } else {
                 this.mUsingCrossfadeLayer = false;
@@ -170,9 +168,9 @@ class BackgroundController implements OnPageChangeListener, OnAdapterChangeListe
         return base;
     }
 
-    private void updateFadingLayer(Point current, Point scrolling, BackgroundController.Direction dir, float relX, float relY, Drawable base) {
-        int crossfadeY = scrolling.y + (dir == BackgroundController.Direction.DOWN?1:0);
-        int crossfadeX = scrolling.x + (dir == BackgroundController.Direction.RIGHT?1:0);
+    private void updateFadingLayer(Point current, Point scrolling, Direction dir, float relX, float relY, Drawable base) {
+        int crossfadeY = scrolling.y + (dir == Direction.DOWN?1:0);
+        int crossfadeX = scrolling.x + (dir == Direction.RIGHT?1:0);
         if(crossfadeY != this.mCurrentPage.y) {
             crossfadeX = this.mAdapter.getCurrentColumnForRow(crossfadeY, current.x);
         }
@@ -222,7 +220,7 @@ class BackgroundController implements OnPageChangeListener, OnAdapterChangeListe
     public void onPageBackgroundChanged(int row, int column) {
         this.mPageBackgrounds.remove(Integer.valueOf(pack(column, row)));
         if(this.mAdapter != null && this.mAdapter.getRowCount() > 0) {
-            this.updateBackgrounds(this.mCurrentPage, this.mCurrentPage, BackgroundController.Direction.NONE, this.mScrollRelativeX, this.mScrollRelativeY);
+            this.updateBackgrounds(this.mCurrentPage, this.mCurrentPage, Direction.NONE, this.mScrollRelativeX, this.mScrollRelativeY);
         }
 
     }
@@ -230,7 +228,7 @@ class BackgroundController implements OnPageChangeListener, OnAdapterChangeListe
     public void onRowBackgroundChanged(int row) {
         this.mRowBackgrounds.remove(Integer.valueOf(row));
         if(this.mAdapter != null && this.mAdapter.getRowCount() > 0) {
-            this.updateBackgrounds(this.mCurrentPage, this.mCurrentPage, BackgroundController.Direction.NONE, this.mScrollRelativeX, this.mScrollRelativeY);
+            this.updateBackgrounds(this.mCurrentPage, this.mCurrentPage, Direction.NONE, this.mScrollRelativeX, this.mScrollRelativeY);
         }
 
     }
@@ -247,7 +245,7 @@ class BackgroundController implements OnPageChangeListener, OnAdapterChangeListe
     }
 
     private void reset() {
-        this.mDirection = BackgroundController.Direction.NONE;
+        this.mDirection = Direction.NONE;
         this.mPageBackgrounds.evictAll();
         this.mRowBackgrounds.evictAll();
         this.mCrossfadeLayer.setDrawable((Drawable)null);
@@ -277,7 +275,7 @@ class BackgroundController implements OnPageChangeListener, OnAdapterChangeListe
             return this.x != 0;
         }
 
-        static BackgroundController.Direction fromOffset(float x, float y) {
+        static Direction fromOffset(float x, float y) {
             return y != 0.0F?(y > 0.0F?DOWN:UP):(x != 0.0F?(x > 0.0F?RIGHT:LEFT):NONE);
         }
     }

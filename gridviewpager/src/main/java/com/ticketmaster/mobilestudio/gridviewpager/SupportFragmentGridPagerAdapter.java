@@ -60,7 +60,7 @@ public abstract class SupportFragmentGridPagerAdapter extends GridPagerAdapter {
         this.mFragmentPositions.put(tag, position);
         if(fragment instanceof GridPageOptions) {
             GridPageOptions backgroundProvider = (GridPageOptions)fragment;
-            backgroundProvider.setBackgroundListener(new SupportFragmentGridPagerAdapter.BackgroundObserver(tag));
+            backgroundProvider.setBackgroundListener(new BackgroundObserver(tag));
         }
 
         return fragment;
