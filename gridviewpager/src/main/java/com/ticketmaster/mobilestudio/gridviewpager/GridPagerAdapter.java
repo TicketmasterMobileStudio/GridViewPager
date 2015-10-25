@@ -13,6 +13,8 @@ import android.view.ViewGroup;
 
 @TargetApi(20)
 public abstract class GridPagerAdapter {
+    private static final int DEFAULT_OFFSET = 1;
+
     public static final Drawable BACKGROUND_NONE = new NoOpDrawable();
     public static final int OPTION_DISABLE_PARALLAX = 1;
     public static final int PAGE_DEFAULT_OPTIONS = 0;
@@ -27,6 +29,14 @@ public abstract class GridPagerAdapter {
     public abstract int getRowCount();
 
     public abstract int getColumnCount(int row);
+
+    public int getColumnOffscreenPageCount(int row, int column) {
+        return DEFAULT_OFFSET;
+    }
+
+    public int getRowOffscreenPageCount(int row, int column) {
+        return DEFAULT_OFFSET;
+    }
 
     public boolean isLeftSwipingAllowed(int row, int column) {
         return true;

@@ -51,7 +51,6 @@ public class GridViewPager extends ViewGroup {
     private static final boolean DEBUG_POPULATE = false;
     private static final boolean DEBUG_ADAPTER = false;
     private static final boolean DEBUG_ROUND = false;
-    private static final int DEFAULT_OFFSCREEN_PAGES = 1;
     private static final int SLIDE_ANIMATION_DURATION_NORMAL_MS = 300;
     private static final int MIN_DISTANCE_FOR_FLING_DP = 40;
     private static final int MIN_ACCURATE_VELOCITY = 200;
@@ -79,7 +78,6 @@ public class GridViewPager extends ViewGroup {
     private int mColMargin;
     private boolean mInLayout;
     private boolean mDelayPopulate;
-    private int mOffscreenPageCount;
     private boolean mIsBeingDragged;
     private boolean mIsAbleToDrag;
     private final int mTouchSlop;
@@ -119,9 +117,7 @@ public class GridViewPager extends ViewGroup {
     private boolean mDatasetChangePending;
     private GridPageTransformer mPageTransformer;
 
-    private static final int DRAW_ORDER_DEFAULT = 0;
-    private static final int DRAW_ORDER_FORWARD = 1;
-    private static final int DRAW_ORDER_REVERSE = 2;
+    private boolean mDrawCornerPositions;
 
     public GridViewPager(Context context) {
         this(context, (AttributeSet)null, 0);
@@ -141,7 +137,6 @@ public class GridViewPager extends ViewGroup {
                 GridViewPager.this.populate();
             }
         };
-        this.mOffscreenPageCount = 1;
         this.mActivePointerId = -1;
         this.mVelocityTracker = null;
         this.mFirstLayout = true;
@@ -183,6 +178,10 @@ public class GridViewPager extends ViewGroup {
 
         this.mWindowInsets = insets;
         return insets;
+    }
+
+    public void setDrawCornerPositions(boolean drawCorners) {
+        mDrawCornerPositions = drawCorners;
     }
 
     public void setConsumeWindowInsets(boolean consume) {
@@ -467,23 +466,6 @@ public class GridViewPager extends ViewGroup {
 
     }
 
-    public int getOffscreenPageCount() {
-        return this.mOffscreenPageCount;
-    }
-
-    public void setOffscreenPageCount(int limit) {
-        if(limit < 1) {
-            Log.w("GridViewPager", "Requested offscreen page limit " + limit + " too small; defaulting to " + 1);
-            limit = 1;
-        }
-
-        if(limit != this.mOffscreenPageCount) {
-            this.mOffscreenPageCount = limit;
-            this.populate();
-        }
-
-    }
-
     public void setPageMargins(int rowMarginPx, int columnMarginPx) {
         int oldRowMargin = this.mRowMargin;
         this.mRowMargin = rowMarginPx;
@@ -704,60 +686,71 @@ public class GridViewPager extends ViewGroup {
                     } else {
                         this.mExpectedRowCount = rowCount;
                         this.mExpectedCurrentColumnCount = colCount;
-                        int offscreenPages = Math.max(1, this.mOffscreenPageCount);
-                        int startPosY = Math.max(0, newY - offscreenPages);
-                        int endPosY = Math.min(rowCount - 1, newY + offscreenPages);
-                        int startPosX = Math.max(0, newX - offscreenPages);
-                        int endPosX = Math.min(colCount - 1, newX + offscreenPages);
+                        int columnOffscreenPages = mAdapter.getColumnOffscreenPageCount(newY, newX);
+                        int rowOffscreenPages = mAdapter.getRowOffscreenPageCount(newY, newX);
+                        int startPosY = Math.max(0, newY - rowOffscreenPages);
+                        int endPosY = Math.min(rowCount - 1, newY + rowOffscreenPages);
+                        int startPosX = Math.max(0, newX - columnOffscreenPages);
+                        int endPosX = Math.min(colCount - 1, newX + columnOffscreenPages);
 
                         int i;
                         ItemInfo ii;
+                        // Reuse items
                         for(i = this.mItems.size() - 1; i >= 0; --i) {
                             ii = (ItemInfo)this.mItems.valueAt(i);
                             if(ii.positionY == newY) {
+                                // Checks to see if it is already in the correct row.
                                 if(ii.positionX >= startPosX && ii.positionX <= endPosX) {
                                     continue;
                                 }
                             } else {
-                                int key = this.mAdapter.getCurrentColumnForRow(ii.positionY, this.mCurItem.x);
-                                if(ii.positionX == key && ii.positionY >= startPosY && ii.positionY <= endPosY) {
+                                // Checks to see if it is already in the correct column.
+                                int column = this.mAdapter.getCurrentColumnForRow(ii.positionY, newX);
+                                if(ii.positionX == column && ii.positionY >= startPosY && ii.positionY <= endPosY) {
                                     continue;
                                 }
                             }
-
+                            // Checks to see if it is already a corner position that supports offsets.
+                            if (mDrawCornerPositions
+                                    && mAdapter.getColumnOffscreenPageCount(newX, ii.positionY) > 0 && mAdapter.getRowOffscreenPageCount(ii.positionX, newY) > 0
+                                    && Math.abs(ii.positionX - newX) == 1 && Math.abs(ii.positionY -newY) == 1) {
+                                continue;
+                            }
+                            // Not a position that will be used. Prep for destruction.
                             Point var14 = (Point)this.mItems.keyAt(i);
                             this.mItems.removeAt(i);
                             var14.set(ii.positionX, ii.positionY);
                             this.mRecycledItems.put(var14, ii);
                         }
 
-                        this.mTempPoint1.y = newY;
-
-                        for(this.mTempPoint1.x = startPosX; this.mTempPoint1.x <= endPosX; ++this.mTempPoint1.x) {
-                            if(!this.mItems.containsKey(this.mTempPoint1)) {
-                                this.addNewItem(this.mTempPoint1.x, this.mTempPoint1.y);
-                            }
+                        // Create new items.
+                        for(int x = startPosX; x <= endPosX; ++x) {
+                            // Adding positions for the main row
+                            createItemIfNeeded(setTempPoint(x, newY));
                         }
 
-                        for(this.mTempPoint1.y = startPosY; this.mTempPoint1.y <= endPosY; ++this.mTempPoint1.y) {
-                            this.mTempPoint1.x = this.mAdapter.getCurrentColumnForRow(this.mTempPoint1.y, newX);
-                            if(!this.mItems.containsKey(this.mTempPoint1)) {
-                                this.addNewItem(this.mTempPoint1.x, this.mTempPoint1.y); // TODO
-                            }
+                        for(int y = startPosY; y <= endPosY; ++y) {
+                            // Adding positions for the main column
+                            Point point = setTempPoint(newX, y);
+                            createItemIfNeeded(point);
 
-                            if(this.mTempPoint1.y != this.mCurItem.y) {
-                                this.setRowScrollX(this.mTempPoint1.y, this.computePageLeft(this.mTempPoint1.x) - this.getPaddingLeft());
+                            if(point.y != this.mCurItem.y) {
+                                // Sets the correct x scroll on each row.
+                                this.setRowScrollX(point.y, this.computePageLeft(point.x) - this.getPaddingLeft());
                             }
                         }
+                        // Creating corners
+                        populateCornersIfNeeded(newX, newY);
 
                         for(i = this.mRecycledItems.size() - 1; i >= 0; --i) {
+                            // Destroy unused items.
                             ii = (ItemInfo)this.mRecycledItems.removeAt(i);
                             this.mAdapter.destroyItem(this, ii.positionY, ii.positionX, ii.object);
                         }
 
                         this.mRecycledItems.clear();
                         this.mAdapter.finishUpdate(this);
-                        this.mPopulatedPages.set(startPosX, startPosY, endPosX, endPosY); // TODO
+                        this.mPopulatedPages.set(startPosX, startPosY, endPosX, endPosY);
                         this.mPopulatedPageBounds.set(this.computePageLeft(startPosX) - this.getPaddingLeft(), this.computePageTop(startPosY) - this.getPaddingTop(), this.computePageLeft(endPosX + 1) - this.getPaddingRight(), this.computePageTop(endPosY + 1) + this.getPaddingBottom());
                         if(this.mAdapterChangeNotificationPending) {
                             this.mAdapterChangeNotificationPending = false;
@@ -774,6 +767,38 @@ public class GridViewPager extends ViewGroup {
                 }
             }
         }
+        Log.e("GridViewPager", "item count:" + mItems.size());
+        for (int i = 0; i < mItems.size(); i++) {
+            Log.e("GridViewPager", String.valueOf(mItems.keyAt(i)));
+        }
+    }
+
+    private void createItemIfNeeded(Point point) {
+        if (point.x < 0 || point.y < 0) return;
+
+        if(!this.mItems.containsKey(point)) {
+            this.addNewItem(point.x, point.y);
+        }
+    }
+
+    private void populateCornersIfNeeded(int newX, int newY) {
+        if (mDrawCornerPositions) {
+            boolean minusX = mAdapter.getRowOffscreenPageCount(newY, newX - 1) > 0;
+            boolean plusX = mAdapter.getRowOffscreenPageCount(newY, newX + 1) > 0;
+            boolean minusY = mAdapter.getColumnOffscreenPageCount(newY - 1, newX) > 0;
+            boolean plusY = mAdapter.getColumnOffscreenPageCount(newY + 1, newX) > 0;
+
+            if (minusX && minusY) createItemIfNeeded(setTempPoint(newX - 1, newY - 1));
+            if (minusX && plusY) createItemIfNeeded(setTempPoint(newX - 1, newY + 1));
+            if (plusX && plusY) createItemIfNeeded(setTempPoint(newX + 1, newY + 1));
+            if (plusX && minusY) createItemIfNeeded(setTempPoint(newX + 1, newY - 1));
+        }
+    }
+
+    private Point setTempPoint(int x, int y) {
+        this.mTempPoint1.y = y;
+        this.mTempPoint1.x = this.mAdapter.getCurrentColumnForRow(y, x);
+        return this.mTempPoint1;
     }
 
     public Parcelable onSaveInstanceState() {
@@ -1648,7 +1673,6 @@ public class GridViewPager extends ViewGroup {
         }
 
         targetPage = limit(targetPage, firstPage, lastPage);
-        Log.e("GridViewPager", "current:" + currentPage + " previous:" + previousPage + " target:" + targetPage + " velocity:" + velocity + " pageOffset:" + pageOffset);
         return targetPage;
     }
 
