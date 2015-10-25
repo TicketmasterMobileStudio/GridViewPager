@@ -10,6 +10,7 @@ import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.os.SystemClock;
+import android.support.annotation.IntDef;
 import android.support.v4.util.SimpleArrayMap;
 import android.support.v4.view.MotionEventCompat;
 import android.support.v4.view.ViewCompat;
@@ -99,10 +100,14 @@ public class GridViewPager extends ViewGroup {
     private boolean mCalledSuper;
     private OnPageChangeListener mOnPageChangeListener;
     private OnAdapterChangeListener mAdapterChangeListener;
+
     public static final int SCROLL_STATE_IDLE = 0;
     public static final int SCROLL_STATE_DRAGGING = 1;
     public static final int SCROLL_STATE_SETTLING = 2;
     public static final int SCROLL_STATE_CONTENT_SETTLING = 3;
+    @IntDef( {SCROLL_STATE_IDLE, SCROLL_STATE_DRAGGING, SCROLL_STATE_SETTLING, SCROLL_STATE_CONTENT_SETTLING})
+    public @interface ScrollState { }
+
     private int mScrollState;
     private static final int SCROLL_AXIS_X = 0;
     private static final int SCROLL_AXIS_Y = 1;
@@ -117,7 +122,8 @@ public class GridViewPager extends ViewGroup {
     private boolean mDatasetChangePending;
     private GridPageTransformer mPageTransformer;
 
-    private boolean mDrawCornerPositions;
+    private boolean mDrawCornerPositions = false;
+    private boolean mSwipingEnabled = true;
 
     public GridViewPager(Context context) {
         this(context, (AttributeSet)null, 0);
@@ -182,6 +188,18 @@ public class GridViewPager extends ViewGroup {
 
     public void setDrawCornerPositions(boolean drawCorners) {
         mDrawCornerPositions = drawCorners;
+    }
+
+    public boolean isDrawCornerPositions() {
+        return mDrawCornerPositions;
+    }
+
+    public void setSwipingEnabled(boolean enable) {
+        this.mSwipingEnabled = enable;
+    }
+
+    public boolean isSwipingEnabled() {
+        return mSwipingEnabled;
     }
 
     public void setConsumeWindowInsets(boolean consume) {
@@ -767,9 +785,10 @@ public class GridViewPager extends ViewGroup {
                 }
             }
         }
-        Log.e("GridViewPager", "item count:" + mItems.size());
+        // TODO populate gets called way too often. Remove logging when that is figured out.
+        Log.d("GridViewPager", "item count:" + mItems.size());
         for (int i = 0; i < mItems.size(); i++) {
-            Log.e("GridViewPager", String.valueOf(mItems.keyAt(i)));
+            Log.d("GridViewPager", String.valueOf(mItems.keyAt(i)));
         }
     }
 
@@ -1148,8 +1167,10 @@ public class GridViewPager extends ViewGroup {
     }
 
     public boolean onInterceptTouchEvent(MotionEvent ev) {
-        int action = ev.getAction() & 255;
-        if(action != 3 && action != 1) {
+        if (!mSwipingEnabled) return false;
+
+        int action = ev.getAction() & MotionEvent.ACTION_MASK;
+        if(action != MotionEvent.ACTION_CANCEL && action != MotionEvent.ACTION_UP) {
             if(action != 0) {
                 if(this.mIsBeingDragged) {
                     return true;
@@ -1161,13 +1182,13 @@ public class GridViewPager extends ViewGroup {
             }
 
             switch(action) {
-                case 0:
+                case MotionEvent.ACTION_DOWN:
                     this.handlePointerDown(ev);
                     break;
-                case 2:
+                case MotionEvent.ACTION_MOVE:
                     this.handlePointerMove(ev);
                     break;
-                case 6:
+                case MotionEvent.ACTION_POINTER_UP:
                     this.onSecondaryPointerUp(ev);
             }
 
@@ -1186,7 +1207,7 @@ public class GridViewPager extends ViewGroup {
     }
 
     public boolean onTouchEvent(MotionEvent ev) {
-        if(this.mAdapter == null) {
+        if(this.mAdapter == null || !mSwipingEnabled) {
             return false;
         } else {
             int action = ev.getAction();
@@ -1840,17 +1861,17 @@ public class GridViewPager extends ViewGroup {
     }
 
     public interface OnAdapterChangeListener {
-        void onAdapterChanged(GridPagerAdapter var1, GridPagerAdapter var2);
+        void onAdapterChanged(GridPagerAdapter oldAdapter, GridPagerAdapter newAdapter);
 
         void onDataSetChanged();
     }
 
     public interface OnPageChangeListener {
-        void onPageScrolled(int var1, int var2, float var3, float var4, int var5, int var6);
+        void onPageScrolled(int row, int column, float rowOffset, float columnOffset, int rowOffsetPixels, int columnOffsetPixels);
 
-        void onPageSelected(int var1, int var2);
+        void onPageSelected(int row, int column);
 
-        void onPageScrollStateChanged(int var1);
+        void onPageScrollStateChanged(@ScrollState int state);
     }
 
     static class ItemInfo {
