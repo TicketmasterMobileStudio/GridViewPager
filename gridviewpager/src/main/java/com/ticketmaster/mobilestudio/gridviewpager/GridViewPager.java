@@ -762,6 +762,9 @@ public class GridViewPager extends ViewGroup {
         GridViewPager.SavedState state = new GridViewPager.SavedState(superState);
         state.currentX = this.mCurItem.x;
         state.currentY = this.mCurItem.y;
+        if (mAdapter != null) {
+            state.adapterState = mAdapter.saveState();
+        }
         return state;
     }
 
@@ -771,12 +774,18 @@ public class GridViewPager extends ViewGroup {
         } else {
             GridViewPager.SavedState ss = (GridViewPager.SavedState)state;
             super.onRestoreInstanceState(ss.getSuperState());
-            if(this.pointInRange(ss.currentX, ss.currentY)) {
-                this.mRestoredCurItem = new Point(ss.currentX, ss.currentY);
+
+            boolean isPointInRange = this.pointInRange(ss.currentX, ss.currentY);
+            if(mAdapter != null && isPointInRange) {
+                mAdapter.restoreState(ss.adapterState, ss.loader);
                 this.setCurrentItemInternal(this.mRestoredCurItem.y, this.mRestoredCurItem.x, false, true);
+            } else if (isPointInRange) {
+                this.mRestoredCurItem = new Point(ss.currentX, ss.currentY);
+                mRestoredClassLoader = ss.loader;
             } else {
                 this.mCurItem.set(0, 0);
                 this.scrollTo(0, 0);
+                mRestoredClassLoader = ss.loader;
             }
 
         }
@@ -1713,6 +1722,9 @@ public class GridViewPager extends ViewGroup {
     private static class SavedState extends BaseSavedState {
         int currentX;
         int currentY;
+        Parcelable adapterState;
+        ClassLoader loader;
+
         public static final Creator<GridViewPager.SavedState> CREATOR = new Creator() {
             public GridViewPager.SavedState createFromParcel(Parcel in) {
                 return new GridViewPager.SavedState(in);
@@ -1731,12 +1743,18 @@ public class GridViewPager extends ViewGroup {
             super.writeToParcel(out, flags);
             out.writeInt(this.currentX);
             out.writeInt(this.currentY);
+            out.writeParcelable(adapterState, flags);
         }
 
         private SavedState(Parcel in) {
             super(in);
+            if (loader == null) {
+                loader = getClass().getClassLoader();
+            }
             this.currentX = in.readInt();
             this.currentY = in.readInt();
+            adapterState = in.readParcelable(loader);
+            this.loader = loader;
         }
     }
 
