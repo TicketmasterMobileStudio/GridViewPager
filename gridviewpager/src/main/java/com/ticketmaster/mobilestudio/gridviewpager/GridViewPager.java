@@ -16,6 +16,7 @@ import android.support.v4.view.ViewConfigurationCompat;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.util.SparseIntArray;
+import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.VelocityTracker;
@@ -122,7 +123,7 @@ public class GridViewPager extends ViewGroup {
     public GridViewPager(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
         this.mConsumeInsets = true;
-        this.mSlideAnimationDurationMs = 300;
+        this.mSlideAnimationDurationMs = SLIDE_ANIMATION_DURATION_NORMAL_MS;
         this.mEndScrollRunnable = new Runnable() {
             public void run() {
                 GridViewPager.this.setScrollState(0);
@@ -139,9 +140,9 @@ public class GridViewPager extends ViewGroup {
         this.mTouchSlop = ViewConfigurationCompat.getScaledPagingTouchSlop(vc);
         this.mTouchSlopSquared = this.mTouchSlop * this.mTouchSlop;
         this.mMinFlingVelocity = vc.getScaledMinimumFlingVelocity();
-        this.mMinFlingDistance = (int)(40.0F * density);
-        this.mMinUsableVelocity = (int)(200.0F * density);
-        this.mCloseEnough = (int)(2.0F * density);
+        this.mMinFlingDistance = (int)(MIN_DISTANCE_FOR_FLING_DP * density);
+        this.mMinUsableVelocity = (int)(MIN_ACCURATE_VELOCITY * density);
+        this.mCloseEnough = (int)(CLOSE_ENOUGH * density);
         this.mCurItem = new Point();
         this.mItems = new SimpleArrayMap();
         this.mRecycledItems = new SimpleArrayMap();
@@ -391,7 +392,7 @@ public class GridViewPager extends ViewGroup {
                 }
 
                 if(this.mFirstLayout) {
-                    this.mCurItem.set(0, 0);
+                    this.mCurItem.set(column, row);
                     this.mAdapter.setCurrentColumnForRow(row, column);
                     if(dispatchSelected) {
                         if(this.mOnPageChangeListener != null) {
@@ -476,6 +477,10 @@ public class GridViewPager extends ViewGroup {
 
     public void setSlideAnimationDuration(int slideAnimationDuration) {
         this.mSlideAnimationDurationMs = slideAnimationDuration;
+    }
+
+    public int getSlideAnimationDuration() {
+        return mSlideAnimationDurationMs;
     }
 
     public int getPageRowMargin() {
@@ -768,6 +773,7 @@ public class GridViewPager extends ViewGroup {
             super.onRestoreInstanceState(ss.getSuperState());
             if(this.pointInRange(ss.currentX, ss.currentY)) {
                 this.mRestoredCurItem = new Point(ss.currentX, ss.currentY);
+                this.setCurrentItemInternal(this.mRestoredCurItem.y, this.mRestoredCurItem.x, false, true);
             } else {
                 this.mCurItem.set(0, 0);
                 this.scrollTo(0, 0);
@@ -1662,13 +1668,13 @@ public class GridViewPager extends ViewGroup {
         public boolean needsMeasure;
 
         public LayoutParams() {
-            super(-1, -1);
+            super(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT);
         }
 
         public LayoutParams(Context context, AttributeSet attrs) {
             super(context, attrs);
             TypedArray a = context.obtainStyledAttributes(attrs, GridViewPager.LAYOUT_ATTRS);
-            this.gravity = a.getInteger(0, 48);
+            this.gravity = a.getInteger(0, Gravity.TOP);
             a.recycle();
         }
     }
@@ -1691,7 +1697,7 @@ public class GridViewPager extends ViewGroup {
         private final float falloffRate;
 
         public DragFrictionInterpolator() {
-            this(4.0F);
+            this(DEFAULT_FALLOFF);
         }
 
         public DragFrictionInterpolator(float falloffRate) {
