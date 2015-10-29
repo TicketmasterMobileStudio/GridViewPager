@@ -35,6 +35,11 @@ import android.widget.Scroller;
 
 import com.ticketmaster.mobilestudio.gridviewpager.GridPagerAdapter.OnBackgroundChangeListener;
 
+/**
+ * This code was originally taken from the wear library 1.3.0.
+ * It has been changed to support other devices like phones and tablet and a min api of 16.
+ * The wear specific stuff has been removed so people use the official unofficial library for Android Wear.
+ */
 public class GridViewPager extends ViewGroup {
     private static final String TAG = "GridViewPager";
     private static final boolean DEBUG_LIFECYCLE = false;
@@ -183,11 +188,23 @@ public class GridViewPager extends ViewGroup {
         return insets;
     }
 
+    /**
+     * Default = false;
+     * <br />
+     * If set to true corner pages; top/left, top/right, bottom/left and bottom/right will
+     * be drawn with offsets from the adapter respected. This is great if you are using the transformer.
+     */
     public void setDrawCornerPositions(boolean drawCorners) {
         mDrawCornerPositions = drawCorners;
     }
 
-    public boolean isDrawCornerPositions() {
+    /**
+     * Default = false;
+     * <br />
+     * If true corner pages; top/left, top/right, bottom/left and bottom/right will
+     * be drawn with offsets from the adapter respected. This is great if you are using the transformer.
+     */
+    public boolean shouldDrawCornerPositions() {
         return mDrawCornerPositions;
     }
 
@@ -886,6 +903,8 @@ public class GridViewPager extends ViewGroup {
     }
 
     /**
+     * This is taken directly from the ViewPager with added column support.
+     *
      * Set a {@link GridPageTransformer} that will be called for each attached page whenever
      * the scroll position is changed. This allows the application to apply custom property
      * transformations to each page, overriding the default sliding look and feel.

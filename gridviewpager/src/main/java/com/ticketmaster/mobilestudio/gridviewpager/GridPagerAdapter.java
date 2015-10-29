@@ -11,7 +11,7 @@ import android.view.View;
 import android.view.ViewGroup;
 
 public abstract class GridPagerAdapter {
-    private static final int DEFAULT_OFFSET = 1;
+    public static final int DEFAULT_OFFSET = 1;
 
     public static final Drawable BACKGROUND_NONE = new NoOpDrawable();
     public static final int OPTION_DISABLE_PARALLAX = 1;
@@ -28,26 +28,48 @@ public abstract class GridPagerAdapter {
 
     public abstract int getColumnCount(int row);
 
+    /**
+     * Default is GridPagerAdapter.DEFAULT_OFFSET.
+     * This can also be thought of as the number of horizontal pages in a row given a position.
+     * Note, if this returns 0 swiping left and right will be disabled.
+     */
     public int getColumnOffscreenPageCount(int row, int column) {
         return DEFAULT_OFFSET;
     }
 
+    /**
+     * Default is GridPagerAdapter.DEFAULT_OFFSET.
+     * This can also be thought of as the number of vertical pages in a column given a position.
+     * Note, if this returns 0 swiping up and down will be disabled.
+     */
     public int getRowOffscreenPageCount(int row, int column) {
         return DEFAULT_OFFSET;
     }
 
+    /**
+     * True by default. Can prevent swiping left at an exact position.
+     */
     public boolean isLeftSwipingAllowed(int row, int column) {
         return true;
     }
 
+    /**
+     * True by default. Can prevent swiping up at an exact position.
+     */
     public boolean isUpSwipingAllowed(int row, int column) {
         return true;
     }
 
+    /**
+     * True by default. Can prevent swiping right at an exact position.
+     */
     public boolean isRightSwipingAllowed(int row, int column) {
         return true;
     }
 
+    /**
+     * True by default. Can prevent swiping down at an exact position.
+     */
     public boolean isDownSwipingAllowed(int row, int column) {
         return true;
     }
