@@ -13,10 +13,10 @@ import android.os.Parcel;
 import android.os.Parcelable;
 import android.os.SystemClock;
 import android.support.annotation.IntDef;
+import android.support.annotation.Nullable;
 import android.support.v4.util.SimpleArrayMap;
 import android.support.v4.view.MotionEventCompat;
 import android.support.v4.view.ViewCompat;
-import android.support.v4.view.ViewConfigurationCompat;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.util.SparseIntArray;
@@ -82,7 +82,6 @@ public class GridViewPager extends ViewGroup {
     private boolean mIsBeingDragged;
     private boolean mIsAbleToDrag;
     private final int mTouchSlop;
-    private final int mTouchSlopSquared;
     private float mPointerLastX;
     private float mPointerLastY;
     private float mGestureInitialY;
@@ -114,7 +113,6 @@ public class GridViewPager extends ViewGroup {
     private int mScrollAxis;
     private SparseIntArray mRowScrollX;
     private View mScrollingContent;
-    private BackgroundController mBackgroundController;
     private WindowInsets mWindowInsets;
     private OnApplyWindowInsetsListener mOnApplyWindowInsetsListener;
     private boolean mAdapterChangeNotificationPending;
@@ -149,8 +147,7 @@ public class GridViewPager extends ViewGroup {
         this.mScrollState = 0;
         ViewConfiguration vc = ViewConfiguration.get(this.getContext());
         float density = context.getResources().getDisplayMetrics().density;
-        this.mTouchSlop = ViewConfigurationCompat.getScaledPagingTouchSlop(vc);
-        this.mTouchSlopSquared = this.mTouchSlop * this.mTouchSlop;
+        this.mTouchSlop = getResources().getDimensionPixelSize(R.dimen.gvp_touch_slop);
         this.mMinFlingVelocity = vc.getScaledMinimumFlingVelocity();
         this.mMinFlingDistance = (int)(40.0F * density);
         this.mMinUsableVelocity = (int)(200.0F * density);
@@ -164,8 +161,6 @@ public class GridViewPager extends ViewGroup {
         this.mTempPoint1 = new Point();
         this.setOverScrollMode(OVER_SCROLL_IF_CONTENT_SCROLLS);
         this.mRowScrollX = new SparseIntArray();
-        this.mBackgroundController = new BackgroundController();
-        this.mBackgroundController.attachTo(this);
     }
 
     public void onAttachedToWindow() {
@@ -271,7 +266,6 @@ public class GridViewPager extends ViewGroup {
             }
 
             this.mAdapter.registerDataSetObserver(this.mObserver);
-            this.mAdapter.setOnBackgroundChangeListener(this.mBackgroundController);
             this.mDelayPopulate = false;
             boolean var5 = this.mFirstLayout;
             this.mFirstLayout = true;
@@ -340,11 +334,6 @@ public class GridViewPager extends ViewGroup {
         if(this.mAdapterChangeListener != null) {
             this.mAdapterChangeListener.onAdapterChanged(oldAdapter, newAdapter);
         }
-
-        if(this.mBackgroundController != null) {
-            this.mBackgroundController.onAdapterChanged(oldAdapter, newAdapter);
-        }
-
     }
 
     public void scrollTo(int x, int y) {
@@ -361,10 +350,6 @@ public class GridViewPager extends ViewGroup {
             this.mScrollState = newState;
             if(this.mOnPageChangeListener != null) {
                 this.mOnPageChangeListener.onPageScrollStateChanged(newState);
-            }
-
-            if(this.mBackgroundController != null) {
-                this.mBackgroundController.onPageScrollStateChanged(newState);
             }
 
             if (mPageTransformer != null) {
@@ -453,10 +438,6 @@ public class GridViewPager extends ViewGroup {
                         if(this.mOnPageChangeListener != null) {
                             this.mOnPageChangeListener.onPageSelected(row, column);
                         }
-
-                        if(this.mBackgroundController != null) {
-                            this.mBackgroundController.onPageSelected(row, column);
-                        }
                     }
 
                     this.requestLayout();
@@ -482,10 +463,6 @@ public class GridViewPager extends ViewGroup {
         if(dispatchSelected) {
             if(this.mOnPageChangeListener != null) {
                 this.mOnPageChangeListener.onPageSelected(y, x);
-            }
-
-            if(this.mBackgroundController != null) {
-                this.mBackgroundController.onPageSelected(y, x);
             }
         }
 
@@ -600,20 +577,6 @@ public class GridViewPager extends ViewGroup {
         return ii;
     }
 
-    void rowBackgroundChanged(int row) {
-        if(this.mBackgroundController != null) {
-            this.mBackgroundController.onRowBackgroundChanged(row);
-        }
-
-    }
-
-    void pageBackgroundChanged(int row, int column) {
-        if(this.mBackgroundController != null) {
-            this.mBackgroundController.onPageBackgroundChanged(row, column);
-        }
-
-    }
-
     private void dataSetChanged() {
         int adapterRowCount = this.mAdapter.getRowCount();
         this.mExpectedRowCount = adapterRowCount;
@@ -675,11 +638,6 @@ public class GridViewPager extends ViewGroup {
         if(this.mAdapterChangeListener != null) {
             this.mAdapterChangeListener.onDataSetChanged();
         }
-
-        if(this.mBackgroundController != null) {
-            this.mBackgroundController.onDataSetChanged();
-        }
-
     }
 
     private void populate() {
@@ -819,10 +777,10 @@ public class GridViewPager extends ViewGroup {
 
     private void populateCornersIfNeeded(int newX, int newY) {
         if (mDrawCornerPositions) {
-            boolean minusX = mAdapter.getRowOffscreenPageCount(newY, newX - 1) > 0;
-            boolean plusX = mAdapter.getRowOffscreenPageCount(newY, newX + 1) > 0;
-            boolean minusY = mAdapter.getColumnOffscreenPageCount(newY - 1, newX) > 0;
-            boolean plusY = mAdapter.getColumnOffscreenPageCount(newY + 1, newX) > 0;
+            boolean minusX = mAdapter.getRowOffscreenPageCount(newY, newX - 1) > 0 && isColumnInBounds(newY, newX - 1);
+            boolean plusX = mAdapter.getRowOffscreenPageCount(newY, newX + 1) > 0 && isColumnInBounds(newY, newX + 1);
+            boolean minusY = mAdapter.getColumnOffscreenPageCount(newY - 1, newX) > 0 && isRowInBounds(newY - 1);
+            boolean plusY = mAdapter.getColumnOffscreenPageCount(newY + 1, newX) > 0 && isRowInBounds(newY + 1);
 
             if (minusX && minusY) createItemIfNeeded(setTempPoint(newX - 1, newY - 1));
             if (minusX && plusY) createItemIfNeeded(setTempPoint(newX - 1, newY + 1));
@@ -1131,10 +1089,6 @@ public class GridViewPager extends ViewGroup {
             this.mOnPageChangeListener.onPageScrolled(positionY, positionX, offsetY, offsetX, offsetTopPx, offsetLeftPx);
         }
 
-        if(this.mBackgroundController != null) {
-            this.mBackgroundController.onPageScrolled(positionY, positionX, offsetY, offsetX, offsetTopPx, offsetLeftPx);
-        }
-
         if (mPageTransformer != null) {
             final int scrollX = getScrollX();
             final int scrollY = getScrollY();
@@ -1190,7 +1144,7 @@ public class GridViewPager extends ViewGroup {
 
         int action = ev.getAction() & MotionEvent.ACTION_MASK;
         if(action != MotionEvent.ACTION_CANCEL && action != MotionEvent.ACTION_UP) {
-            if(action != 0) {
+            if(action != MotionEvent.ACTION_DOWN) {
                 if(this.mIsBeingDragged) {
                     return true;
                 }
@@ -1279,7 +1233,6 @@ public class GridViewPager extends ViewGroup {
         float scrollX = (float)this.getRowScrollX(this.mCurItem.y);
         float scrollY = (float)this.getScrollY();
         int targetY;
-        boolean wouldOverscroll = false;
         float overscrollY;
         if(this.mScrollAxis == SCROLL_AXIS_Y) {
             targetY = this.getContentHeight() + this.mRowMargin;
@@ -1293,25 +1246,12 @@ public class GridViewPager extends ViewGroup {
             if(Math.abs(targetX) <= Math.abs(deltaY)) {
                 deltaY -= targetX;
                 scrollY += targetX;
-                wouldOverscroll = true;
-            }
-
-            if(wouldOverscroll) {
-                View mode = this.getChildForInfo(this.infoForScrollPosition((int)scrollX, (int)scrollY));
-                if(mode != null) {
-                    int couldScroll = (int)Math.signum(deltaY);
-                    int overscrollX = this.getScrollableDistance(mode, couldScroll);
-                    overscrollY = limit(deltaY, overscrollX);
-                    mode.scrollBy(0, (int)overscrollY);
-                    deltaY -= overscrollY;
-                    this.mPointerLastY += overscrollY - (float)((int)overscrollY);
-                }
             }
         }
 
         int targetX1 = (int)(scrollX + (float)((int)deltaX));
         targetY = (int)(scrollY + (float)((int)deltaY));
-        wouldOverscroll = wouldOverscroll || targetX1 < leftBound || targetX1 > rightBound || targetY < topBound || targetY > bottomBound;
+        boolean wouldOverscroll = targetX1 < leftBound || targetX1 > rightBound || targetY < topBound || targetY > bottomBound;
         if(wouldOverscroll) {
             int mode1 = this.getOverScrollMode();
             boolean couldScroll1 = this.mScrollAxis == 0 && leftBound < rightBound || this.mScrollAxis == 1 && topBound < bottomBound;
@@ -1334,14 +1274,6 @@ public class GridViewPager extends ViewGroup {
             }
         }
 
-        if ((!mAdapter.isLeftSwipingAllowed(mCurItem.y, mCurItem.x) && deltaX > 0) || (!mAdapter.isRightSwipingAllowed(mCurItem.y, mCurItem.x) && deltaX < 0)) {
-            deltaX = 0;
-        }
-
-        if ((!mAdapter.isUpSwipingAllowed(mCurItem.y, mCurItem.x) && deltaY > 0) || (!mAdapter.isDownSwipingAllowed(mCurItem.y, mCurItem.x) && deltaY < 0)) {
-            deltaY = 0;
-        }
-
         scrollX += deltaX;
         scrollY += deltaY;
         this.mPointerLastX += scrollX - (float)((int)scrollX);
@@ -1349,17 +1281,6 @@ public class GridViewPager extends ViewGroup {
         this.scrollTo((int)scrollX, (int)scrollY);
         this.pageScrolled((int)scrollX, (int)scrollY);
         return true;
-    }
-
-    private int getScrollableDistance(View child, int dir) {
-        int scrollable = 0;
-        if(child instanceof CardScrollView) {
-            scrollable = ((CardScrollView)child).getAvailableScrollDelta(dir);
-        } else if(child instanceof ScrollView) {
-            scrollable = this.getScrollableDistance((ScrollView)child, dir);
-        }
-
-        return scrollable;
     }
 
     private int getScrollableDistance(ScrollView view, int direction) {
@@ -1418,7 +1339,7 @@ public class GridViewPager extends ViewGroup {
         int pointerIndex = MotionEventCompat.getActionIndex(ev);
         int pointerId = MotionEventCompat.getPointerId(ev, pointerIndex);
         if(pointerId == this.mActivePointerId) {
-            int newPointerIndex = pointerIndex == 0?1:0;
+            int newPointerIndex = pointerIndex == 0 ? 1 : 0;
             this.mPointerLastX = MotionEventCompat.getX(ev, newPointerIndex);
             this.mPointerLastY = MotionEventCompat.getY(ev, newPointerIndex);
             this.mActivePointerId = MotionEventCompat.getPointerId(ev, newPointerIndex);
@@ -1575,7 +1496,10 @@ public class GridViewPager extends ViewGroup {
 
                 float dragX;
                 float dragY;
-                if(!this.mIsBeingDragged && xDiff * xDiff + yDiff * yDiff > (float)this.mTouchSlopSquared) {
+                View currentChild = getChildForInfo(infoForPosition(mCurItem));
+                // Touch slop was changed to better manage scrollable children
+                if(!this.mIsBeingDragged && (xDiff > mTouchSlop || yDiff > mTouchSlop)
+                        && shouldDragChildView(currentChild, dx, dy)) {
                     this.mIsBeingDragged = true;
                     this.requestParentDisallowInterceptTouchEvent(true);
                     this.setScrollState(SCROLL_STATE_DRAGGING);
@@ -1603,8 +1527,8 @@ public class GridViewPager extends ViewGroup {
                 }
 
                 if(this.mIsBeingDragged) {
-                    dragX = this.mScrollAxis == 0?x:this.mPointerLastX;
-                    dragY = this.mScrollAxis == 1?y:this.mPointerLastY;
+                    dragX = this.mScrollAxis == 0 ? x : this.mPointerLastX;
+                    dragY = this.mScrollAxis == 1 ? y : this.mPointerLastY;
                     if(this.performDrag(dragX, dragY)) {
                         ViewCompat.postInvalidateOnAnimation(this);
                     }
@@ -1614,6 +1538,54 @@ public class GridViewPager extends ViewGroup {
                 return this.mIsBeingDragged;
             }
         }
+    }
+
+    // Added methods to handle scrollable views.
+
+    private boolean shouldDragChildView(@Nullable View child, float dx, float dy) {
+        float xDiff = Math.abs(dx);
+        float yDiff = Math.abs(dy);
+
+        return (yDiff > xDiff // Scrolling in Y direction
+                    && (!isChildScrollableView(child) // Not a scrollview so let it continue
+                        || (isAtVerticalScrollLimit(child, dy) // At end of scrolling.
+                            && isRowInBounds(mCurItem.y + (dy < 0 ? 1 : -1)))) // There is another page.
+                    && ((mAdapter.isUpSwipingAllowed(mCurItem.y, mCurItem.x) && dy > 0) // check if this position allows swiping
+                        || (mAdapter.isDownSwipingAllowed(mCurItem.y, mCurItem.x) && dy < 0))
+                || (xDiff > yDiff // Scrolling in X direction
+                    && (!isChildScrollableView(child) // Not a scrollview so let it continue
+                        || (isAtHorizontalScrollLimit(child, dx) // At end of scrolling.
+                            && isColumnInBounds(mCurItem.y, mCurItem.x + (dx < 0 ? 1 : -1)))) // There is another page
+                    && ((mAdapter.isLeftSwipingAllowed(mCurItem.y, mCurItem.x) && dx > 0) // check if this position allows swiping
+                        || (mAdapter.isRightSwipingAllowed(mCurItem.y, mCurItem.x) && dx < 0))));
+    }
+
+    private boolean isAtVerticalScrollLimit(@Nullable View child, float dy) {
+        return child != null
+                && !child.canScrollVertically((int) -dy);
+    }
+
+    private boolean isAtHorizontalScrollLimit(@Nullable View child, float dx) {
+        return child != null
+                && !child.canScrollHorizontally((int) -dx);
+    }
+
+    private boolean isChildScrollableView(@Nullable View child) {
+        return child != null
+                && (child.canScrollVertically(-1)
+                    || child.canScrollVertically(1)
+                    || child.canScrollHorizontally(-1)
+                    || child.canScrollHorizontally(1));
+    }
+
+    private boolean isRowInBounds(int row) {
+        int size = mAdapter.getRowCount();
+        return 0 <= row && row < size;
+    }
+
+    private boolean isColumnInBounds(int row, int column) {
+        int size = mAdapter.getColumnCount(row);
+        return 0 <= column && column < size;
     }
 
     private boolean handlePointerUp(MotionEvent ev) {
@@ -1643,17 +1615,10 @@ public class GridViewPager extends ViewGroup {
                     int currentPageY = ii.positionY;
                     int distanceY = this.getScrollY() - this.computePageTop(ii.positionY);
                     float pageOffsetY = this.getYIndex((float)distanceY);
-                    if(pageOffsetY == 0.0F) {
-                        View child = this.getChildForInfo(this.infoForCurrentScrollPosition());
-                        int scrollable = this.getScrollableDistance(child, -velocity);
-                        if(scrollable != 0) {
-                            this.mScrollingContent = child;
-                            if(Math.abs(velocity) >= Math.abs(this.mMinFlingVelocity)) {
-                                this.flingContent(0, scrollable, 0, -velocity);
-                                this.endDrag();
-                            }
-                        }
-                    } else {
+                    // Added functionality to better handle scroll views.
+                    View child = getChildForInfo(infoForPosition(mCurItem));
+                    if (child == null
+                            || !child.canScrollVertically(-totalDeltaY)) {
                         targetPageY = this.determineTargetPage(this.mCurItem.y, currentPageY, pageOffsetY, this.mPopulatedPages.top, this.mPopulatedPages.bottom, velocity, totalDeltaY);
                     }
             }
