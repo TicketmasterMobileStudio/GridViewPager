@@ -1,24 +1,26 @@
 package com.ticketmaster.mobilestudio.gridviewpager;
 
+import android.app.Fragment;
+import android.app.FragmentManager;
+import android.app.FragmentTransaction;
 import android.graphics.Point;
 import android.graphics.drawable.Drawable;
-import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentManager;
-import android.support.v4.app.FragmentTransaction;
+import android.os.Build.VERSION;
+import android.os.Build.VERSION_CODES;
 import android.view.View;
 import android.view.ViewGroup;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public abstract class SupportFragmentGridPagerAdapter extends GridPagerAdapter {
+public abstract class FragmentGridPagerAdapter extends GridPagerAdapter {
     private static final int MAX_ROWS = 65535;
     private final FragmentManager mFragmentManager;
     private final Map<String, Point> mFragmentPositions;
     private final Map<Point, String> mFragmentTags;
     private FragmentTransaction mCurTransaction;
 
-    public SupportFragmentGridPagerAdapter(FragmentManager fm) {
+    public FragmentGridPagerAdapter(FragmentManager fm) {
         this.mFragmentManager = fm;
         this.mFragmentPositions = new HashMap();
         this.mFragmentTags = new HashMap();
@@ -69,6 +71,7 @@ public abstract class SupportFragmentGridPagerAdapter extends GridPagerAdapter {
         }
 
         Fragment fragment = (Fragment)object;
+
         this.removeFragment(fragment, this.mCurTransaction);
     }
 
@@ -106,7 +109,7 @@ public abstract class SupportFragmentGridPagerAdapter extends GridPagerAdapter {
     }
 
     public void finishUpdate(ViewGroup container) {
-        if(this.mFragmentManager.isDestroyed()) {
+        if(VERSION.SDK_INT >= VERSION_CODES.JELLY_BEAN_MR1 && this.mFragmentManager.isDestroyed()) {
             this.mCurTransaction = null;
         } else {
             if(this.mCurTransaction != null) {

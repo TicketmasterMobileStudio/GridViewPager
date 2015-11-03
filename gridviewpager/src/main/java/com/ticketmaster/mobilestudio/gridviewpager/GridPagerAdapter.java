@@ -1,6 +1,5 @@
 package com.ticketmaster.mobilestudio.gridviewpager;
 
-import android.annotation.TargetApi;
 import android.database.DataSetObservable;
 import android.database.DataSetObserver;
 import android.graphics.Canvas;
@@ -11,22 +10,69 @@ import android.os.Parcelable;
 import android.view.View;
 import android.view.ViewGroup;
 
-@TargetApi(20)
 public abstract class GridPagerAdapter {
-    public static final Drawable BACKGROUND_NONE = new GridPagerAdapter.NoOpDrawable();
+    public static final int DEFAULT_OFFSET = 1;
+
+    public static final Drawable BACKGROUND_NONE = new NoOpDrawable();
     public static final int OPTION_DISABLE_PARALLAX = 1;
     public static final int PAGE_DEFAULT_OPTIONS = 0;
     public static final Point POSITION_NONE = new Point(-1, -1);
     public static final Point POSITION_UNCHANGED = new Point(-2, -2);
     private DataSetObservable mObservable = new DataSetObservable();
-    private GridPagerAdapter.OnBackgroundChangeListener mOnBackgroundChangeListener;
+    private OnBackgroundChangeListener mOnBackgroundChangeListener;
 
     public GridPagerAdapter() {
     }
 
     public abstract int getRowCount();
 
-    public abstract int getColumnCount(int var1);
+    public abstract int getColumnCount(int row);
+
+    /**
+     * Default is GridPagerAdapter.DEFAULT_OFFSET.
+     * This can also be thought of as the number of horizontal pages in a row given a position.
+     * Note, if this returns 0 swiping left and right will be disabled.
+     */
+    public int getColumnOffscreenPageCount(int row, int column) {
+        return DEFAULT_OFFSET;
+    }
+
+    /**
+     * Default is GridPagerAdapter.DEFAULT_OFFSET.
+     * This can also be thought of as the number of vertical pages in a column given a position.
+     * Note, if this returns 0 swiping up and down will be disabled.
+     */
+    public int getRowOffscreenPageCount(int row, int column) {
+        return DEFAULT_OFFSET;
+    }
+
+    /**
+     * True by default. Can prevent swiping left at an exact position.
+     */
+    public boolean isLeftSwipingAllowed(int row, int column) {
+        return true;
+    }
+
+    /**
+     * True by default. Can prevent swiping up at an exact position.
+     */
+    public boolean isUpSwipingAllowed(int row, int column) {
+        return true;
+    }
+
+    /**
+     * True by default. Can prevent swiping right at an exact position.
+     */
+    public boolean isRightSwipingAllowed(int row, int column) {
+        return true;
+    }
+
+    /**
+     * True by default. Can prevent swiping down at an exact position.
+     */
+    public boolean isDownSwipingAllowed(int row, int column) {
+        return true;
+    }
 
     public int getCurrentColumnForRow(int row, int currentColumn) {
         return 0;
@@ -73,7 +119,7 @@ public abstract class GridPagerAdapter {
 
     }
 
-    void setOnBackgroundChangeListener(GridPagerAdapter.OnBackgroundChangeListener listener) {
+    void setOnBackgroundChangeListener(OnBackgroundChangeListener listener) {
         this.mOnBackgroundChangeListener = listener;
     }
 
