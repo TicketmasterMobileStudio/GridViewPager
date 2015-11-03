@@ -147,7 +147,7 @@ public class GridViewPager extends ViewGroup {
         this.mScrollState = 0;
         ViewConfiguration vc = ViewConfiguration.get(this.getContext());
         float density = context.getResources().getDisplayMetrics().density;
-        this.mTouchSlop = (int) (8 * (getResources().getDisplayMetrics().densityDpi / 160f));
+        this.mTouchSlop = getResources().getDimensionPixelSize(R.dimen.gvp_touch_slop);
         this.mMinFlingVelocity = vc.getScaledMinimumFlingVelocity();
         this.mMinFlingDistance = (int)(40.0F * density);
         this.mMinUsableVelocity = (int)(200.0F * density);
