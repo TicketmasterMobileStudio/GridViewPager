@@ -36,6 +36,9 @@ import android.widget.Scroller;
 
 import com.ticketmaster.mobilestudio.gridviewpager.GridPagerAdapter.OnBackgroundChangeListener;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * This code was originally taken from the wear library 1.3.0.
  * It has been changed to support other devices like phones and tablet and a min api of 16.
@@ -98,7 +101,9 @@ public class GridViewPager extends ViewGroup {
     private static final int CLOSE_ENOUGH = 2;
     private boolean mFirstLayout;
     private boolean mCalledSuper;
+    private List<OnPageChangeListener> mOnPageChangeListeners;
     private OnPageChangeListener mOnPageChangeListener;
+    private OnPageChangeListener mInternalPageChangeListener;
     private OnAdapterChangeListener mAdapterChangeListener;
 
     public static final int SCROLL_STATE_IDLE = 0;
@@ -311,8 +316,54 @@ public class GridViewPager extends ViewGroup {
         return this.mAdapter;
     }
 
+    /**
+     * Set a listener that will be invoked whenever the page changes or is incrementally
+     * scrolled. See {@link OnPageChangeListener}.
+     *
+     * @param listener Listener to set
+     *
+     * @deprecated Use {@link #addOnPageChangeListener(OnPageChangeListener)}
+     * and {@link #removeOnPageChangeListener(OnPageChangeListener)} instead.
+     */
+    @Deprecated
     public void setOnPageChangeListener(OnPageChangeListener listener) {
         this.mOnPageChangeListener = listener;
+    }
+
+    /**
+     * Add a listener that will be invoked whenever the page changes or is incrementally
+     * scrolled. See {@link OnPageChangeListener}.
+     *
+     * <p>Components that add a listener should take care to remove it when finished.
+     * Other components that take ownership of a view may call {@link #clearOnPageChangeListeners()}
+     * to remove all attached listeners.</p>
+     *
+     * @param listener listener to add
+     */
+    public void addOnPageChangeListener(OnPageChangeListener listener) {
+        if (mOnPageChangeListeners == null) {
+            mOnPageChangeListeners = new ArrayList<>();
+        }
+        mOnPageChangeListeners.add(listener);
+    }
+    /**
+     * Remove a listener that was previously added via
+     * {@link #addOnPageChangeListener(OnPageChangeListener)}.
+     *
+     * @param listener listener to remove
+     */
+    public void removeOnPageChangeListener(OnPageChangeListener listener) {
+        if (mOnPageChangeListeners != null) {
+            mOnPageChangeListeners.remove(listener);
+        }
+    }
+    /**
+     * Remove all listeners that are notified of any changes in scroll state or position.
+     */
+    public void clearOnPageChangeListeners() {
+        if (mOnPageChangeListeners != null) {
+            mOnPageChangeListeners.clear();
+        }
     }
 
     private int getClientWidth() {
@@ -326,7 +377,7 @@ public class GridViewPager extends ViewGroup {
     public void setOnAdapterChangeListener(OnAdapterChangeListener listener) {
         this.mAdapterChangeListener = listener;
         if(listener != null && this.mAdapter != null && !this.mAdapterChangeNotificationPending) {
-            listener.onAdapterChanged((GridPagerAdapter)null, this.mAdapter);
+            listener.onAdapterChanged((GridPagerAdapter) null, this.mAdapter);
         }
 
     }
@@ -349,15 +400,26 @@ public class GridViewPager extends ViewGroup {
     private void setScrollState(int newState) {
         if(this.mScrollState != newState) {
             this.mScrollState = newState;
-            if(this.mOnPageChangeListener != null) {
-                this.mOnPageChangeListener.onPageScrollStateChanged(newState);
-            }
 
             if (mPageTransformer != null) {
                 // PageTransformers can do complex things that benefit from hardware layers.
                 enableLayers(newState != SCROLL_STATE_IDLE);
             }
+
+            dispatchOnScrollStateChanged(newState);
         }
+    }
+
+    /**
+     * Set a separate OnPageChangeListener for internal use by the support library.
+     *
+     * @param listener Listener to set
+     * @return The old listener that was set, if any.
+     */
+    OnPageChangeListener setInternalPageChangeListener(OnPageChangeListener listener) {
+        OnPageChangeListener oldListener = mInternalPageChangeListener;
+        mInternalPageChangeListener = listener;
+        return oldListener;
     }
 
     private int getRowScrollX(int row) {
@@ -436,9 +498,7 @@ public class GridViewPager extends ViewGroup {
                     this.mCurItem.set(column, row);
                     this.mAdapter.setCurrentColumnForRow(row, column);
                     if(dispatchSelected) {
-                        if(this.mOnPageChangeListener != null) {
-                            this.mOnPageChangeListener.onPageSelected(row, column);
-                        }
+                        dispatchOnPageSelected(row, column);
                     }
 
                     this.requestLayout();
@@ -469,7 +529,13 @@ public class GridViewPager extends ViewGroup {
 
         if(smoothScroll) {
             this.smoothScrollTo(destX, destY, velocity);
+            if (dispatchSelected) {
+                dispatchOnPageSelected(y, x);
+            }
         } else {
+            if (dispatchSelected) {
+                dispatchOnPageSelected(y, x);
+            }
             this.completeScroll(false);
             this.scrollTo(destX, destY);
             this.pageScrolled(destX, destY);
@@ -1100,9 +1166,8 @@ public class GridViewPager extends ViewGroup {
 
     public void onPageScrolled(int positionX, int positionY, float offsetX, float offsetY, int offsetLeftPx, int offsetTopPx) {
         this.mCalledSuper = true;
-        if(this.mOnPageChangeListener != null) {
-            this.mOnPageChangeListener.onPageScrolled(positionY, positionX, offsetY, offsetX, offsetTopPx, offsetLeftPx);
-        }
+
+        dispatchOnPageScrolled(positionY, positionX, offsetY, offsetX, offsetTopPx, offsetLeftPx);
 
         if (mPageTransformer != null) {
             final int scrollX = getScrollX();
@@ -1117,6 +1182,55 @@ public class GridViewPager extends ViewGroup {
                 if (info == null) continue;
                 mPageTransformer.transformPage(child, info.positionX, info.positionY, transformX, transformY);
             }
+        }
+    }
+
+    private void dispatchOnPageScrolled(int row, int column, float rowOffset, float columnOffset, int rowOffsetPixels, int columnOffsetPixels) {
+        if (mOnPageChangeListener != null) {
+            mOnPageChangeListener.onPageScrolled(row, column, rowOffset, columnOffset, rowOffsetPixels, columnOffsetPixels);
+        }
+        if (mOnPageChangeListeners != null) {
+            for (int i = 0, z = mOnPageChangeListeners.size(); i < z; i++) {
+                OnPageChangeListener listener = mOnPageChangeListeners.get(i);
+                if (listener != null) {
+                    listener.onPageScrolled(row, column, rowOffset, columnOffset, rowOffsetPixels, columnOffsetPixels);
+                }
+            }
+        }
+        if (mInternalPageChangeListener != null) {
+            mInternalPageChangeListener.onPageScrolled(row, column, rowOffset, columnOffset, rowOffsetPixels, columnOffsetPixels);
+        }
+    }
+    private void dispatchOnPageSelected(int row, int column) {
+        if (mOnPageChangeListener != null) {
+            mOnPageChangeListener.onPageSelected(row, column);
+        }
+        if (mOnPageChangeListeners != null) {
+            for (int i = 0, z = mOnPageChangeListeners.size(); i < z; i++) {
+                OnPageChangeListener listener = mOnPageChangeListeners.get(i);
+                if (listener != null) {
+                    listener.onPageSelected(row, column);
+                }
+            }
+        }
+        if (mInternalPageChangeListener != null) {
+            mInternalPageChangeListener.onPageSelected(row, column);
+        }
+    }
+    private void dispatchOnScrollStateChanged(int state) {
+        if (mOnPageChangeListener != null) {
+            mOnPageChangeListener.onPageScrollStateChanged(state);
+        }
+        if (mOnPageChangeListeners != null) {
+            for (int i = 0, z = mOnPageChangeListeners.size(); i < z; i++) {
+                OnPageChangeListener listener = mOnPageChangeListeners.get(i);
+                if (listener != null) {
+                    listener.onPageScrollStateChanged(state);
+                }
+            }
+        }
+        if (mInternalPageChangeListener != null) {
+            mInternalPageChangeListener.onPageScrollStateChanged(state);
         }
     }
 
