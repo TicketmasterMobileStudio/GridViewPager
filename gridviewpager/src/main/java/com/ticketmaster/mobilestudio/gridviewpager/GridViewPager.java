@@ -831,11 +831,6 @@ public class GridViewPager extends ViewGroup {
                 }
             }
         }
-        // TODO populate gets called way too often. Remove logging when that is figured out.
-        Log.d("GridViewPager", "item count:" + mItems.size());
-        for (int i = 0; i < mItems.size(); i++) {
-            Log.d("GridViewPager", String.valueOf(mItems.keyAt(i)));
-        }
     }
 
     private void createItemIfNeeded(Point point) {
