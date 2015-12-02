@@ -1626,6 +1626,7 @@ public class GridViewPager extends ViewGroup {
                 float dragX;
                 float dragY;
                 View currentChild = getChildForInfo(infoForPosition(mCurItem));
+                currentChild = getScrollableChildIfExists(currentChild);
                 // Touch slop was changed to better manage scrollable children
                 if(!this.mIsBeingDragged && (xDiff > mTouchSlop || yDiff > mTouchSlop)
                         && shouldDragChildView(currentChild, dx, dy)) {
@@ -1667,6 +1668,17 @@ public class GridViewPager extends ViewGroup {
                 return this.mIsBeingDragged;
             }
         }
+    }
+
+    private View getScrollableChildIfExists(@Nullable  View currentChild) {
+        if (isChildScrollableView(currentChild)) return currentChild;
+
+        ViewGroup viewGroup = (ViewGroup) currentChild;
+        int childCount = viewGroup.getChildCount();
+        for (int i = 0; i < childCount; i++) {
+            if (isChildScrollableView(viewGroup.getChildAt(i))) return viewGroup.getChildAt(i);
+        }
+        return currentChild;
     }
 
     // Added methods to handle scrollable views.
