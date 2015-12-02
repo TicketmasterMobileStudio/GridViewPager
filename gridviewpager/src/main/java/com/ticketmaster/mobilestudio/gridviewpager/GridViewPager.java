@@ -1670,7 +1670,9 @@ public class GridViewPager extends ViewGroup {
         }
     }
 
+    @Nullable
     private View getScrollableChildIfExists(@Nullable  View currentChild) {
+        if (currentChild == null) return null;
         if (isChildScrollableView(currentChild)) return currentChild;
 
         ViewGroup viewGroup = (ViewGroup) currentChild;
