@@ -1172,7 +1172,7 @@ public class GridViewPager extends ViewGroup {
                 final View child = getChildAt(i);
 
                 final float transformX = (float) (child.getLeft() - scrollX) / getClientWidth();
-                final float transformY = (float) (child.getTop() - scrollY) / getClientWidth();
+                final float transformY = (float) (child.getTop() - scrollY) / getClientHeight();
                 ItemInfo info = infoForChild(child);
                 if (info == null) continue;
                 mPageTransformer.transformPage(child, info.positionX, info.positionY, transformX, transformY);
