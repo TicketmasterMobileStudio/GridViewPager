@@ -8,7 +8,7 @@
 - Any nested scrollable View works correctly.
 - Offsets controlled by individual pages in the adapter. 
 - Corner offsets controlled by the GridViewpager.
-- In the adapter individual pages can decide the swiping directions they support; left, up, right and down.
+- In the adapter, individual pages can decide the swiping directions they support; left, up, right and down.
 - Added SupportFragmentGridPagerAdapter.
 - Supports Android starting at API 16. Forking could bring it back further, but why?
 
@@ -50,7 +50,7 @@ The adapter is a more powerful class in GridViewPager then it is in the traditio
 - GridPagerTransformer, works just like PagerTransformer but gives x and y offsets instead of just a page offset.
 - `setSlideAnimationDuration` Will set the duration of programmatic page changing. 
 - Corner Offsets will allow creation of the page in the upper left, upper right, lower left and lower right. This will always respect the offsets described by the adapter for the surrounding individual positions but beyond that there is no additional control. This is useful when animating side pages.
-- All scrollable views have full support. This includes ScrollView, ListView, RecyclerView and any view that responses correctly to `isScrollable` methods. The GridViewPager will look at the root view and its direct children. Any deeper then that is not currently supported.
+- All scrollable views have full support. This includes ScrollView, ListView, RecyclerView and any view that responds correctly to `isScrollable` methods. The GridViewPager will look at the root view and its direct children. Any deeper then that is not currently supported.
 
 
 ### What isn't supported
