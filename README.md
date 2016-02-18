@@ -1,16 +1,16 @@
 # GridViewPager
-Android Wear's GridViewPager rebuilt for phone and tablet use. Backwards compatibility was added to API-16. Then *beefed* up.
+[Android Wear's GridViewPager](http://developer.android.com/reference/android/support/wearable/view/GridViewPager.html) rebuilt for phone and tablet use. Backwards compatibility was added to API-16. Then *beefed* up.
 
-## Where's the _beef_:
+## Where's the _beef?_:
 
-- GridPagerTransformer has been added
+- GridPagerTransformer has been added.
 - Duration of programmatic page changing can be set.
-- Any Nested ScrollView works correctly
+- Any nested scrollable View works correctly.
 - Offsets controlled by individual pages in the adapter. 
-- Corner offsets controlled by the GridViewpager
+- Corner offsets controlled by the GridViewpager.
 - In the adapter individual pages can decide the swiping directions they support; left, up, right and down.
 - Added SupportFragmentGridPagerAdapter.
-- Supports Android starting at API 16. Forking could bring it back further but why?
+- Supports Android starting at API 16. Forking could bring it back further, but why?
 
 ### Adapter Power
 
@@ -33,7 +33,7 @@ The adapter is a more powerful class in GridViewPager then it is in the traditio
    
 ```
  
- - `getCurrentColumnForRow` comes from the wear support lib. It controls which column swiping vertical will take you to. The following will give you a standard grid.
+ - `getCurrentColumnForRow` comes from the [wear support lib](http://developer.android.com/training/wearables/apps/layouts.html#UiLibrary). It controls which column swiping vertical will take you to. The following will give you a standard grid.
  
 ```java
  
